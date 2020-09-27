@@ -36,6 +36,10 @@ class Cashondelivery implements CashondeliveryInterface
     protected $cashondeliveryTableInterface;
     protected $taxHelper;
     protected $taxCalculation;
+    /**
+     * @var float $taxRate
+     */
+    protected $taxRate;
 
     public function __construct(
         ScopeConfigInterface $scopeConfigInterface,
@@ -112,7 +116,12 @@ class Cashondelivery implements CashondeliveryInterface
     public function getBaseAmount(array $totals, $country, $region)
     {
         $calcBase = $this->getCalcBase($totals);
-        return $this->cashondeliveryTableInterface->getFee($calcBase, $country, $region);
+        $amount = $this->cashondeliveryTableInterface->getFee($calcBase, $country, $region);
+        // if ($this->taxHelper->shippingPriceIncludesTax()) {
+        //     $amount = $amount / (1 + ($this->getShippingTaxRate() / 100));
+        // }
+
+        return $amount;
     }
 
     /**
@@ -137,11 +146,14 @@ class Cashondelivery implements CashondeliveryInterface
     }
 
     /**
-     * @return \Magento\Tax\Api\Data\TaxRateInterface
+     * @return float
      */
     protected function getShippingTaxRate()
     {
-        $id = $this->taxHelper->getShippingTaxClass(null);
-        return $this->taxCalculation->getCalculatedRate($id);
+        if ($this->taxRate === null) {
+            $id = $this->taxHelper->getShippingTaxClass(null);
+            $this->taxRate = $this->taxCalculation->getCalculatedRate($id);
+        }
+        return $this->taxRate;
     }
 }

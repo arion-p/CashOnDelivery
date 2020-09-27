@@ -27,21 +27,12 @@ use Magento\Quote\Api\Data\ShippingAssignmentInterface;
 use Magento\Quote\Model\Quote;
 use MSP\CashOnDelivery\Api\CashondeliveryInterface;
 use Magento\Quote\Model\Quote\Address;
+use Magento\Tax\Api\TaxCalculationInterface;
+use \Magento\Tax\Api\Data\QuoteDetailsInterfaceFactory;
+use Magento\Tax\Helper\Data as TaxHelper;
 
 class CashondeliveryTax extends AbstractTotal
 {
-    protected $cashOnDeliveryInterface;
-    protected $priceCurrencyInterface;
-
-    public function __construct(
-        PaymentMethodManagementInterface $paymentMethodManagement,
-        PriceCurrencyInterface $priceCurrencyInterface,
-        CashondeliveryInterface $cashOnDeliveryInterface
-    ) {
-        parent::__construct($paymentMethodManagement);
-        $this->cashOnDeliveryInterface = $cashOnDeliveryInterface;
-        $this->priceCurrencyInterface = $priceCurrencyInterface;
-    }
 
     public function collect(
         Quote $quote,
@@ -53,6 +44,43 @@ class CashondeliveryTax extends AbstractTotal
         ) {
             return $this;
         }
+
+        $storeId = $quote->getStoreId();
+
+        $cashOnDeliveryDataObject = $this->getCashOnDeliveryDataObject($shippingAssignment, $total, false);
+        $baseCashOnDeliveryDataObject = $this->getCashOnDeliveryDataObject($shippingAssignment, $total, true);
+        $quoteDetails = $this->prepareQuoteDetails($shippingAssignment, [$cashOnDeliveryDataObject]);
+        $taxDetails = $this->taxCalculationService
+            ->calculateTax($quoteDetails, $storeId);
+        $taxDetailsItems = $taxDetails->getItems()[self::ITEM_CODE_CASH_ON_DELIVERY];
+
+        $baseQuoteDetails = $this->prepareQuoteDetails($shippingAssignment, [$baseCashOnDeliveryDataObject]);
+        $baseTaxDetails = $this->taxCalculationService
+            ->calculateTax($baseQuoteDetails, $storeId);
+        $baseTaxDetailsItems = $baseTaxDetails->getItems()[self::ITEM_CODE_CASH_ON_DELIVERY];
+
+        if ($this->_canApplyTotal($quote)) {
+            $quote->getShippingAddress()
+                ->setMspCodAmount($taxDetailsItems->getRowTotal());
+            $quote->getShippingAddress()
+                ->setBaseMspCodAmount($baseTaxDetailsItems->getRowTotal());
+
+            $this->processMspCodTaxInfo(
+                $shippingAssignment,
+                $total,
+                $taxDetailsItems,
+                $baseTaxDetailsItems
+            );
+    
+        }
+        return $this;
+    
+
+
+
+
+
+
 
         $country = $quote->getShippingAddress()->getCountryModel()->getData('iso2_code');
         $region = $quote->getShippingAddress()->getRegionModel()->getData('code');
@@ -77,11 +105,14 @@ class CashondeliveryTax extends AbstractTotal
             $total->setBaseMspCodTaxAmount($baseTaxAmount);
             $total->setMspCodTaxAmount($taxAmount);
 
-            $total->setBaseTaxAmount($total->getBaseTaxAmount() + $baseTaxAmount);
-            $total->setTaxAmount($total->getTaxAmount() + $taxAmount);
+            // $total->setBaseTaxAmount($total->getBaseTaxAmount() + $baseTaxAmount);
+            // $total->setTaxAmount($total->getTaxAmount() + $taxAmount);
 
-            $total->setBaseGrandTotal($total->getBaseGrandTotal() + $baseTaxAmount);
-            $total->setGrandTotal($total->getGrandTotal() + $taxAmount);
+            //Add the COD tax to total tax amount
+            $total->addTotalAmount('tax', $taxAmount);
+            $total->addBaseTotalAmount('tax', $baseTaxAmount);
+            // $total->setBaseGrandTotal($total->getBaseGrandTotal() + $baseTaxAmount);
+            // $total->setGrandTotal($total->getGrandTotal() + $taxAmount);
         }
 
         /*
@@ -93,4 +124,6 @@ class CashondeliveryTax extends AbstractTotal
 
         return $this;
     }
+
+
 }

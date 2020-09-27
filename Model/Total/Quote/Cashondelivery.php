@@ -27,24 +27,10 @@ use Magento\Quote\Api\Data\ShippingAssignmentInterface;
 use Magento\Quote\Model\Quote;
 use MSP\CashOnDelivery\Api\CashondeliveryInterface;
 use Magento\Quote\Model\Quote\Address;
+use Magento\Tax\Helper\Data as TaxHelper;
 
 class Cashondelivery extends AbstractTotal
 {
-    protected $cashOnDeliveryInterface;
-    protected $priceCurrencyInterface;
-
-    public function __construct(
-        PaymentMethodManagementInterface $paymentMethodManagement,
-        PriceCurrencyInterface $priceCurrencyInterface,
-        CashondeliveryInterface $cashOnDeliveryInterface
-    ) {
-        parent::__construct($paymentMethodManagement);
-
-        $this->cashOnDeliveryInterface = $cashOnDeliveryInterface;
-        $this->priceCurrencyInterface = $priceCurrencyInterface;
-        $this->setCode('msp_cashondelivery');
-    }
-
     public function collect(
         Quote $quote,
         ShippingAssignmentInterface $shippingAssignment,
@@ -71,8 +57,8 @@ class Cashondelivery extends AbstractTotal
         $amount = $this->priceCurrencyInterface->convert($baseAmount);
 
         if ($this->_canApplyTotal($quote)) {
-            $total->setBaseTotalAmount('msp_cashondelivery', $baseAmount);
-            $total->setTotalAmount('msp_cashondelivery', $amount);
+            $total->setBaseTotalAmount(self::ITEM_CODE_CASH_ON_DELIVERY, $baseAmount);
+            $total->setTotalAmount(self::ITEM_CODE_CASH_ON_DELIVERY, $amount);
 
             $total->setBaseMspCodAmount($baseAmount);
             $total->setMspCodAmount($amount);
@@ -97,7 +83,7 @@ class Cashondelivery extends AbstractTotal
             return [
                 'code' => $this->getCode(),
                 'title' => __('Cash On Delivery'),
-                'value' => $total->getMspCodAmount(),
+                'value' => $total->getMspCodAmount()
             ];
         }
 
