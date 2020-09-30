@@ -36,6 +36,7 @@ class Cashondelivery extends AbstractTotal
         ShippingAssignmentInterface $shippingAssignment,
         Total $total
     ) {
+        //parent::collect($quote, $shippingAssignment, $total);
         if ($shippingAssignment->getShipping()->getAddress()->getAddressType() != Address::TYPE_SHIPPING
             || $quote->isVirtual()
         ) {
@@ -57,14 +58,13 @@ class Cashondelivery extends AbstractTotal
         $amount = $this->priceCurrencyInterface->convert($baseAmount);
 
         if ($this->_canApplyTotal($quote)) {
+
             $total->setBaseTotalAmount(self::ITEM_CODE_CASH_ON_DELIVERY, $baseAmount);
             $total->setTotalAmount(self::ITEM_CODE_CASH_ON_DELIVERY, $amount);
 
             $total->setBaseMspCodAmount($baseAmount);
             $total->setMspCodAmount($amount);
 
-            $total->setBaseGrandTotal($total->getBaseGrandTotal() + $baseAmount);
-            $total->setGrandTotal($total->getGrandTotal() + $amount);
         }
 
         /*
@@ -79,19 +79,30 @@ class Cashondelivery extends AbstractTotal
 
     public function fetch(Quote $quote, Total $total)
     {
+        $result = null;
         if ($this->_canApplyTotal($quote)) {
-            return [
+            // if ($this->taxHelper->displayShippingPriceExcludingTax()) {
+                $amount = $total->getMspCodAmount();
+            // } else if($this->taxHelper->displayShippingPriceIncludingTax()) {
+            //     $amount = $total->getMspCodAmount() + $total->getMspCodTaxAmount();
+            // } else {
+            //     $amount = $total->getMspCodAmount() + $total->getMspCodTaxAmount();
+            // }
+
+            $result = [
                 'code' => $this->getCode(),
-                'title' => __('Cash On Delivery'),
-                'value' => $total->getMspCodAmount()
+                'title' => $this->getLabel(),
+                'value' => $amount
             ];
+
         }
 
-        return null;
+        return $result;
     }
 
     public function getLabel()
     {
         return __('Cash On Delivery');
     }
+
 }

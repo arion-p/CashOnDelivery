@@ -43,7 +43,7 @@ abstract class AbstractTotal extends CommonTaxCollector
     /**
      * @var PaymentMethodManagementInterface
      */
-    private $paymentMethodManagement;
+    protected $paymentMethodManagement;
 
     protected $cashOnDeliveryInterface;
     protected $priceCurrencyInterface;
@@ -51,7 +51,7 @@ abstract class AbstractTotal extends CommonTaxCollector
     /**
      * @var TaxHelper
      */
-    private $taxHelper;
+    protected $taxHelper;
 
     /**
      * Class constructor
@@ -151,7 +151,7 @@ abstract class AbstractTotal extends CommonTaxCollector
             $itemDataObject->setTaxClassKey(
                 $this->taxClassKeyDataObjectFactory->create()
                     ->setType(TaxClassKeyInterface::TYPE_ID)
-                    ->setValue($this->_config->getShippingTaxClass($store))
+                    ->setValue($this->taxHelper->getShippingTaxClass($store))
             );
             $itemDataObject->setIsTaxIncluded(
                 $this->taxHelper->shippingPriceIncludesTax()
@@ -188,6 +188,9 @@ abstract class AbstractTotal extends CommonTaxCollector
         //Add the cash on delivery tax to total tax amount
         $total->addTotalAmount('tax', $mspCodTaxDetails->getRowTax());
         $total->addBaseTotalAmount('tax', $baseMspCodTaxDetails->getRowTax());
+
+        $total->setBaseGrandTotal($total->getBaseGrandTotal() + $baseMspCodTaxDetails->getRowTotalInclTax());
+        $total->setGrandTotal($total->getGrandTotal() + $mspCodTaxDetails->getRowTotalInclTax());
 
         return $this;
     }

@@ -45,31 +45,50 @@ class CashondeliveryTax extends AbstractTotal
             return $this;
         }
 
-        $storeId = $quote->getStoreId();
-
-        $cashOnDeliveryDataObject = $this->getCashOnDeliveryDataObject($shippingAssignment, $total, false);
-        $baseCashOnDeliveryDataObject = $this->getCashOnDeliveryDataObject($shippingAssignment, $total, true);
-        $quoteDetails = $this->prepareQuoteDetails($shippingAssignment, [$cashOnDeliveryDataObject]);
-        $taxDetails = $this->taxCalculationService
-            ->calculateTax($quoteDetails, $storeId);
-        $taxDetailsItems = $taxDetails->getItems()[self::ITEM_CODE_CASH_ON_DELIVERY];
-
-        $baseQuoteDetails = $this->prepareQuoteDetails($shippingAssignment, [$baseCashOnDeliveryDataObject]);
-        $baseTaxDetails = $this->taxCalculationService
-            ->calculateTax($baseQuoteDetails, $storeId);
-        $baseTaxDetailsItems = $baseTaxDetails->getItems()[self::ITEM_CODE_CASH_ON_DELIVERY];
-
         if ($this->_canApplyTotal($quote)) {
+            $storeId = $quote->getStoreId();
+
+            $cashOnDeliveryDataObject = $this->getCashOnDeliveryDataObject($shippingAssignment, $total, false);
+            $baseCashOnDeliveryDataObject = $this->getCashOnDeliveryDataObject($shippingAssignment, $total, true);
+            $quoteDetails = $this->prepareQuoteDetails($shippingAssignment, [$cashOnDeliveryDataObject]);
+            $taxDetails = $this->taxCalculationService
+                ->calculateTax($quoteDetails, $storeId);
+            $taxDetailsItems = $taxDetails->getItems()[self::ITEM_CODE_CASH_ON_DELIVERY];
+
+            $baseQuoteDetails = $this->prepareQuoteDetails($shippingAssignment, [$baseCashOnDeliveryDataObject]);
+            $baseTaxDetails = $this->taxCalculationService
+                ->calculateTax($baseQuoteDetails, $storeId);
+            $baseTaxDetailsItems = $baseTaxDetails->getItems()[self::ITEM_CODE_CASH_ON_DELIVERY];
+
             $quote->getShippingAddress()
                 ->setMspCodAmount($taxDetailsItems->getRowTotal());
             $quote->getShippingAddress()
                 ->setBaseMspCodAmount($baseTaxDetailsItems->getRowTotal());
-
+            
             $this->processMspCodTaxInfo(
                 $shippingAssignment,
                 $total,
                 $taxDetailsItems,
                 $baseTaxDetailsItems
+            );
+
+            $extraInfo = [
+                'item_id' => null,
+                'item_type' => self::ITEM_TYPE_CASH_ON_DELIVERY,
+                'associated_item_id' => null,
+            ];
+
+            $appliedTaxes = $taxDetails->getAppliedTaxes();
+            $baseAppliedTaxes = $baseTaxDetails->getAppliedTaxes();
+
+            $appliedTaxesArray = $this->convertAppliedTaxes($appliedTaxes, $baseAppliedTaxes, $extraInfo);
+            $appliedTaxArray = $appliedTaxesArray[0];
+            $this->_saveAppliedTaxes(
+                $total,
+                [$appliedTaxArray],
+                $appliedTaxArray['amount'],
+                $appliedTaxArray['base_amount'],
+                $appliedTaxArray['percent']
             );
     
         }
